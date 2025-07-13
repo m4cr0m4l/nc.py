@@ -44,10 +44,7 @@ jobs:
         merge-multiple: true
 
     - name: List downloaded files
-      run: ls -l
-
-    - name: Make files executable
-      run: chmod +x nc* 
+      run: ls -lh
 
     - name: Upload Executables
       uses: softprops/action-gh-release@v2
