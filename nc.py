@@ -32,6 +32,10 @@ class NetCat:
         else:
             self.send()
 
+    def print_verbose(self, message):
+        if self.args.verbose:
+            print(message, file=sys.stderr)
+
     def send(self):
         if self.args.ssl:
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -60,7 +64,7 @@ class NetCat:
                     buffer += '\n'
                     self.socket.send(buffer.encode())
         except KeyboardInterrupt:
-            print('[!] User terminated.')
+            self.print_verbose('[!] User terminated.')
             self.socket.close()
             sys.exit()
 
@@ -69,19 +73,19 @@ class NetCat:
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             context.load_cert_chain(self.args.ssl_cert, self.args.ssl_key)
 
-        print(f'[*] Listening on {self.args.target}:{self.args.port}')
+        self.print_verbose(f'[*] Listening on {self.args.target}:{self.args.port}')
         self.socket.bind((self.args.target, self.args.port))
         self.socket.listen(5)
         try:
             while True:
                 client_socket, address = self.socket.accept()
-                print(f'[*] Accepted connection from {address[0]}:{address[1]}')
+                self.print_verbose(f'[*] Accepted connection from {address[0]}:{address[1]}')
                 if self.args.ssl:
                     client_socket = context.wrap_socket(client_socket, server_side=True)
                 client_thread = threading.Thread(target=self.handle, args=(client_socket,))
                 client_thread.start()
         except KeyboardInterrupt:
-            print('[!] User terminated.')
+            self.print_verbose('[!] User terminated.')
             self.socket.close()
             sys.exit()
 
@@ -89,20 +93,6 @@ class NetCat:
         if self.args.execute:
             output = execute(self.args.execute)
             client_socket.send(output.encode())
-
-        elif self.args.upload:
-            file_buffer = b''
-            while True:
-                data = client_socket.recv(4096)
-                if not data:
-                    break
-                file_buffer += data
-
-            with open(self.args.upload, 'wb') as f:
-                f.write(file_buffer)
-
-            message = f'Saved file {self.args.upload}'
-            client_socket.send(message.encode())
 
         elif self.args.command:
             cmd_buffer = b''
@@ -127,7 +117,7 @@ if __name__ == '__main__':
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent('''Example:
           nc.py -l -c 192.168.1.108 5555 # command shell
-          nc.py -l -u=file 192.168.1.108 5555 # upload to file
+          nc.py -l 192.168.1.108 5555 > file # upload to file
           nc.py -l -e=\"cat /etc/passwd\" 192.168.1.108 5555 # execute command
           echo 'ABCDEFGHI' | ./nc.py 192.168.1.108 135 # echo local text to server port 135
           nc.py 192.168.1.108 5555 # connect to server
@@ -137,7 +127,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--command', action='store_true', help='initialize command shell')
     parser.add_argument('-e', '--execute', help='execute specified command')
     parser.add_argument('-l', '--listen', action='store_true', help='listen')
-    parser.add_argument('-u', '--upload', help='upload file')
+    parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('-s', '--ssl', action='store_true', help='enable SSL')
     parser.add_argument('--ssl-cert', default='server.crt', help='specify SSL certificate file')
     parser.add_argument('--ssl-key', default='server.key', help='specify SSL private key')
