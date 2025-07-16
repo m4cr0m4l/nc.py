@@ -37,18 +37,18 @@ class NetCat:
             print(message, file=sys.stderr)
 
     def send(self):
-        if self.args.ssl:
-            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-            if not self.args.ssl_verify:
-                context.check_hostname = False
-                context.verify_mode = ssl.CERT_NONE
-            self.socket = context.wrap_socket(self.socket, server_hostname=self.args.target)
-
-        self.socket.connect((self.args.target, self.args.port))
-        if self.buffer:
-            self.socket.send(self.buffer)
-
         try:
+            if self.args.ssl:
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                if not self.args.ssl_verify:
+                    context.check_hostname = False
+                    context.verify_mode = ssl.CERT_NONE
+                self.socket = context.wrap_socket(self.socket, server_hostname=self.args.target)
+
+            self.socket.connect((self.args.target, self.args.port))
+            if self.buffer:
+                self.socket.send(self.buffer)
+
             while True:
                 readable, _, _ = select.select([self.socket, sys.stdin], [], [])
 
@@ -66,19 +66,21 @@ class NetCat:
 
         except KeyboardInterrupt:
             self.print_verbose('[!] User terminated.')
+        except socket.error as e:
+            self.print_verbose(f'[!] Socket error: {e}')
         finally:
             self.socket.close()
             sys.exit()
 
     def listen(self):
-        if self.args.ssl:
-            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            context.load_cert_chain(self.args.ssl_cert, self.args.ssl_key)
-
-        self.socket.bind((self.args.target, self.args.port))
-        self.socket.listen(5)
-        self.print_verbose(f'[*] Listening on {self.args.target}:{self.args.port}')
         try:
+            if self.args.ssl:
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                context.load_cert_chain(self.args.ssl_cert, self.args.ssl_key)
+
+            self.socket.bind((self.args.target, self.args.port))
+            self.socket.listen(5)
+            self.print_verbose(f'[*] Listening on {self.args.target}:{self.args.port}')
             while True:
                 client_socket, address = self.socket.accept()
                 self.print_verbose(f'[*] Accepted connection from {address[0]}:{address[1]}')
@@ -88,18 +90,21 @@ class NetCat:
                 client_thread.start()
         except KeyboardInterrupt:
             self.print_verbose('[!] User terminated.')
+        except socket.error as e:
+            self.print_verbose(f'[!] Socket error: {e}')
+        finally:
             self.socket.close()
             sys.exit()
 
     def handle(self, client_socket):
-        if self.args.execute:
-            output = execute(self.args.execute)
-            client_socket.send(output.encode())
+        try:
+            if self.args.execute:
+                output = execute(self.args.execute)
+                client_socket.send(output.encode())
 
-        elif self.args.command:
-            cmd_buffer = b''
-            while True:
-                try:
+            elif self.args.command:
+                cmd_buffer = b''
+                while True:
                     client_socket.send(b'#> ')
                     while '\n' not in cmd_buffer.decode():
                         cmd_buffer += client_socket.recv(64)
@@ -107,33 +112,25 @@ class NetCat:
                     if response:
                         client_socket.send(response.encode())
                     cmd_buffer = b''
-                except Exception as e:
-                    print(f'server killed {e}')
-                    self.socket.close()
-                    sys.exit()
 
-        else:
-            while True:
-                data = client_socket.recv(64)
-                if not data:
-                    self.print_verbose('[*] Client disconnected.')
-                    break
-                print(data.decode(), end='')
+            else:
+                while True:
+                    data = client_socket.recv(64)
+                    if not data:
+                        self.print_verbose('[*] Client disconnected.')
+                        break
+                    print(data.decode(), end='')
+
+        except Exception as e:
+            self.print_verbose(f'[!] Error in handling client: {e}')
+        finally:
+            client_socket.close()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='Python Netcat',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent('''Example:
-          nc.py -l -c 192.168.1.108 5555 # command shell
-          nc.py -l 192.168.1.108 5555 > file # upload to file
-          nc.py -l -e=\"cat /etc/passwd\" 192.168.1.108 5555 # execute command
-          echo 'ABCDEFGHI' | nc.py 192.168.1.108 135 # echo local text to server port 135
-          nc.py 192.168.1.108 5555 # connect to server
-          '''))
-    parser.add_argument('target', help='specified IP')
-    parser.add_argument('port', type=int, help='specified port')
+    parser = argparse.ArgumentParser(description='Python Netcat')
+    parser.add_argument('target', nargs='?', default='127.0.0.1', help='specified IP')
+    parser.add_argument('port', type=int, nargs='?', default='8888', help='specified port')
     parser.add_argument('-c', '--command', action='store_true', help='initialize command shell')
     parser.add_argument('-e', '--execute', help='execute specified command')
     parser.add_argument('-l', '--listen', action='store_true', help='listen')
