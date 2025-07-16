@@ -50,21 +50,23 @@ class NetCat:
 
         try:
             while True:
-                recv_len = 1
-                response = ''
-                while recv_len:
-                    data = self.socket.recv(4096)
-                    recv_len = len(data)
-                    response += data.decode()
-                    if recv_len < 4096:
-                        break
-                if response:
-                    print(response, end='')
-                    buffer = input()
-                    buffer += '\n'
-                    self.socket.send(buffer.encode())
+                readable, _, _ = select.select([self.socket, sys.stdin], [], [])
+
+                for s in readable:
+                    if s is self.socket:
+                        response = self.socket.recv(4096)
+                        if not response:
+                            self.print_verbose('[*] Connection closed by the server.')
+                            return
+                        print(response.decode(), end='')
+
+                    else:
+                        user_input = input() + '\n'
+                        self.socket.send(user_input.encode())
+
         except KeyboardInterrupt:
             self.print_verbose('[!] User terminated.')
+        finally:
             self.socket.close()
             sys.exit()
 
@@ -73,16 +75,16 @@ class NetCat:
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             context.load_cert_chain(self.args.ssl_cert, self.args.ssl_key)
 
-        self.print_verbose(f'[*] Listening on {self.args.target}:{self.args.port}')
         self.socket.bind((self.args.target, self.args.port))
         self.socket.listen(5)
+        self.print_verbose(f'[*] Listening on {self.args.target}:{self.args.port}')
         try:
             while True:
                 client_socket, address = self.socket.accept()
                 self.print_verbose(f'[*] Accepted connection from {address[0]}:{address[1]}')
                 if self.args.ssl:
                     client_socket = context.wrap_socket(client_socket, server_side=True)
-                client_thread = threading.Thread(target=self.handle, args=(client_socket,))
+                client_thread = threading.Thread(target=self.handle, args=(client_socket,), daemon=True)
                 client_thread.start()
         except KeyboardInterrupt:
             self.print_verbose('[!] User terminated.')
@@ -110,6 +112,14 @@ class NetCat:
                     self.socket.close()
                     sys.exit()
 
+        else:
+            while True:
+                data = client_socket.recv(64)
+                if not data:
+                    self.print_verbose('[*] Client disconnected.')
+                    break
+                print(data.decode(), end='')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -119,7 +129,7 @@ if __name__ == '__main__':
           nc.py -l -c 192.168.1.108 5555 # command shell
           nc.py -l 192.168.1.108 5555 > file # upload to file
           nc.py -l -e=\"cat /etc/passwd\" 192.168.1.108 5555 # execute command
-          echo 'ABCDEFGHI' | ./nc.py 192.168.1.108 135 # echo local text to server port 135
+          echo 'ABCDEFGHI' | nc.py 192.168.1.108 135 # echo local text to server port 135
           nc.py 192.168.1.108 5555 # connect to server
           '''))
     parser.add_argument('target', help='specified IP')
