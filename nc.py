@@ -6,16 +6,14 @@ import shlex
 import ssl
 import subprocess
 import sys
-import textwrap
 import threading
 
 def execute(cmd):
     cmd = cmd.strip()
     if not cmd:
         return
-    output = subprocess.check_output(shlex.split(cmd),
-                                     stderr=subprocess.STDOUT)
-    return output.decode()
+    output = subprocess.run(shlex.split(cmd), capture_output=True, encoding='utf-8')
+    return output.stdout
 
 
 class NetCat:
@@ -129,13 +127,12 @@ class NetCat:
                         client_socket.send(response.encode())
                     cmd_buffer = b''
 
-            else:
-                while True:
-                    data = client_socket.recv(64)
-                    if not data:
-                        self.print_verbose('[*] Client disconnected.')
-                        break
-                    print(data.decode(), end='')
+            while True:
+                data = client_socket.recv(64)
+                if not data:
+                    self.print_verbose('[*] Client disconnected.')
+                    break
+                print(data.decode(), end='')
 
         except Exception as e:
             self.print_verbose(f'[!] Error in handling client: {e}')
