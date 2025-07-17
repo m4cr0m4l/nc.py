@@ -23,16 +23,15 @@ positional arguments:
   port                  specified port
 
 options:
-  -h, --help            show this help message and exit
-  -c, --command         initialize command shell
-  -e, --execute EXECUTE
-                        execute specified command
-  -l, --listen          listen
-  -v, --verbose         be verbose
-  -s, --ssl             enable SSL
-  --ssl-cert SSL_CERT   specify SSL certificate file
-  --ssl-key SSL_KEY     specify SSL private key
-  --ssl-verify          verify SSL certificates
+  -h, --help           show this help message and exit
+  -c, --command        initialize command shell
+  -e, --exec EXEC      execute specified command
+  -l, --listen         listen
+  -v, --verbose        be verbose
+  -s, --ssl            enable SSL
+  --ssl-cert SSL_CERT  specify SSL certificate file
+  --ssl-key SSL_KEY    specify SSL private key
+  --ssl-verify         verify SSL certificates
 ```
 
 ## Examples

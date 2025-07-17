@@ -145,7 +145,7 @@ if __name__ == '__main__':
     parser.add_argument('target', nargs='?', default='127.0.0.1', help='specified IP')
     parser.add_argument('port', type=int, nargs='?', default='8888', help='specified port')
     parser.add_argument('-c', '--command', action='store_true', help='initialize command shell')
-    parser.add_argument('-e', '--execute', help='execute specified command')
+    parser.add_argument('-e', '--exec', help='execute specified command')
     parser.add_argument('-l', '--listen', action='store_true', help='listen')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('-s', '--ssl', action='store_true', help='enable SSL')
