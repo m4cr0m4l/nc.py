@@ -38,7 +38,7 @@ class NetCat:
     def send(self):
         try:
             if self.args.ssl:
-                context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                context = ssl.create_default_context()
                 if not self.args.ssl_verify:
                     context.check_hostname = False
                     context.verify_mode = ssl.CERT_NONE
@@ -60,10 +60,10 @@ class NetCat:
 
         except KeyboardInterrupt:
             self.print_verbose('[!] User terminated.')
-        except socket.error as e:
-            print(f'[!] Socket error: {e}', file=sys.stderr)
         except ssl.SSLError as e:
             print(f'[!] SSL error: {e}', file=sys.stderr)
+        except socket.error as e:
+            print(f'[!] Socket error: {e}', file=sys.stderr)
         except Exception as e:
             print(f'[!] An unexpected error occurred: {e}', file=sys.stderr)
         finally:
@@ -78,26 +78,31 @@ class NetCat:
     def listen(self):
         try:
             if self.args.ssl:
-                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
                 context.load_cert_chain(self.args.ssl_cert, self.args.ssl_key)
 
             self.socket.bind((self.args.target, self.args.port))
             self.socket.listen(5)
             self.print_verbose(f'[*] Listening on {self.args.target}:{self.args.port}')
+
             while True:
-                client_socket, address = self.socket.accept()
-                self.print_verbose(f'[*] Accepted connection from {address[0]}:{address[1]}')
-                if self.args.ssl:
-                    client_socket = context.wrap_socket(client_socket, server_side=True)
-                client_thread = threading.Thread(target=self.handle, args=(client_socket,), daemon=True)
-                client_thread.start()
+                try:
+                    client_socket, address = self.socket.accept()
+                    self.print_verbose(f'[*] Accepted connection from {address[0]}:{address[1]}')
+                    if self.args.ssl:
+                        client_socket = context.wrap_socket(client_socket, server_side=True)
+                    client_thread = threading.Thread(target=self.handle, args=(client_socket,), daemon=True)
+                    client_thread.start()
+
+                except ssl.SSLError as e:
+                    print(f'[!] SSL error: {e}', file=sys.stderr)
+                    continue
+                except socket.error as e:
+                    print(f'[!] Socket error: {e}', file=sys.stderr)
+                    continue
 
         except KeyboardInterrupt:
             self.print_verbose('[!] User terminated.')
-        except socket.error as e:
-            print(f'[!] Socket error: {e}', file=sys.stderr)
-        except ssl.SSLError as e:
-            print(f'[!] SSL error: {e}', file=sys.stderr)
         except Exception as e:
             print(f'[!] An unexpected error occurred: {e}', file=sys.stderr)
         finally:
