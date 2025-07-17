@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-import select
 import socket
 import shlex
 import ssl
@@ -49,28 +48,27 @@ class NetCat:
             if self.buffer:
                 self.socket.send(self.buffer)
 
+            threading.Thread(target=self.handle_user_input, daemon=True).start()
+
             while True:
-                readable, _, _ = select.select([self.socket, sys.stdin], [], [])
-
-                for s in readable:
-                    if s is self.socket:
-                        response = self.socket.recv(4096)
-                        if not response:
-                            self.print_verbose('[*] Connection closed by the server.')
-                            return
-                        print(response.decode(), end='')
-
-                    else:
-                        user_input = input() + '\n'
-                        self.socket.send(user_input.encode())
+                response = self.socket.recv(4096)
+                if not response:
+                    self.print_verbose('[*] Connection closed by the server.')
+                    return
+                print(response.decode(), end='')
 
         except KeyboardInterrupt:
             self.print_verbose('[!] User terminated.')
         except socket.error as e:
-            self.print_verbose(f'[!] Socket error: {e}')
+            print(f'[!] Socket error: {e}', file=sys.stderr)
         finally:
             self.socket.close()
             sys.exit()
+
+    def handle_user_input(self):
+        while True:
+            user_input = input() + '\n'
+            self.socket.send(user_input.encode())
 
     def listen(self):
         try:
@@ -88,10 +86,11 @@ class NetCat:
                     client_socket = context.wrap_socket(client_socket, server_side=True)
                 client_thread = threading.Thread(target=self.handle, args=(client_socket,), daemon=True)
                 client_thread.start()
+
         except KeyboardInterrupt:
             self.print_verbose('[!] User terminated.')
         except socket.error as e:
-            self.print_verbose(f'[!] Socket error: {e}')
+            print(f'[!] Socket error: {e}', file=sys.stderr)
         finally:
             self.socket.close()
             sys.exit()
@@ -143,7 +142,7 @@ if __name__ == '__main__':
     if args.listen:
         buffer = ''
     else:
-        if select.select([sys.stdin], [], [], 0)[0]:
+        if not sys.stdin.isatty():
             buffer = sys.stdin.read()
         else:
             buffer = ''
