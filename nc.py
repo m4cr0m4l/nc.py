@@ -48,6 +48,8 @@ class NetCat:
             self.print_verbose(f'[*] Connected to {self.args.target}:{self.args.port}')
             if self.buffer:
                 self.socket.send(self.buffer)
+                self.socket.close()
+                sys.exit()
 
             threading.Thread(target=self.handle_user_input, daemon=True).start()
 
@@ -56,7 +58,8 @@ class NetCat:
                 if not response:
                     self.print_verbose('[*] Connection closed by the server.')
                     return
-                print(response.decode(), end='')
+                sys.stdout.buffer.write(response)
+                sys.stdout.flush()
 
         except KeyboardInterrupt:
             self.print_verbose('[!] User terminated.')
@@ -111,15 +114,15 @@ class NetCat:
 
     def handle(self, client_socket):
         try:
-            if self.args.execute:
-                output = execute(self.args.execute)
+            if self.args.exec:
+                output = execute(self.args.exec)
                 client_socket.send(output.encode())
 
             elif self.args.command:
                 cmd_buffer = b''
                 while True:
                     client_socket.send(b'#> ')
-                    while '\n' not in cmd_buffer.decode():
+                    while b'\n' not in cmd_buffer:
                         cmd_buffer += client_socket.recv(64)
                     response = execute(cmd_buffer.decode())
                     if response:
@@ -157,9 +160,9 @@ if __name__ == '__main__':
         buffer = ''
     else:
         if not sys.stdin.isatty():
-            buffer = sys.stdin.read()
+            buffer = sys.stdin.buffer.read()
         else:
             buffer = ''
 
-    nc = NetCat(args, buffer.encode('utf-8'))
+    nc = NetCat(args, buffer)
     nc.run()
