@@ -45,6 +45,7 @@ class NetCat:
                 self.socket = context.wrap_socket(self.socket, server_hostname=self.args.target)
 
             self.socket.connect((self.args.target, self.args.port))
+            self.print_verbose(f'[*] Connected to {self.args.target}:{self.args.port}')
             if self.buffer:
                 self.socket.send(self.buffer)
 
@@ -61,6 +62,10 @@ class NetCat:
             self.print_verbose('[!] User terminated.')
         except socket.error as e:
             print(f'[!] Socket error: {e}', file=sys.stderr)
+        except ssl.SSLError as e:
+            print(f'[!] SSL error: {e}', file=sys.stderr)
+        except Exception as e:
+            print(f'[!] An unexpected error occurred: {e}', file=sys.stderr)
         finally:
             self.socket.close()
             sys.exit()
@@ -91,6 +96,10 @@ class NetCat:
             self.print_verbose('[!] User terminated.')
         except socket.error as e:
             print(f'[!] Socket error: {e}', file=sys.stderr)
+        except ssl.SSLError as e:
+            print(f'[!] SSL error: {e}', file=sys.stderr)
+        except Exception as e:
+            print(f'[!] An unexpected error occurred: {e}', file=sys.stderr)
         finally:
             self.socket.close()
             sys.exit()
