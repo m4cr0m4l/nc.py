@@ -2,7 +2,6 @@
 
 import argparse
 import socket
-import shlex
 import ssl
 import subprocess
 import sys
@@ -12,8 +11,13 @@ def execute(cmd):
     cmd = cmd.strip()
     if not cmd:
         return
-    output = subprocess.run(shlex.split(cmd), capture_output=True, encoding='utf-8')
-    return output.stdout
+    try:
+        output = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        if output.returncode != 0:
+            return output.stderr
+        return output.stdout
+    except Exception as e:
+        return f'Error executing command: {e}'
 
 
 class NetCat:
@@ -121,18 +125,23 @@ class NetCat:
                 while True:
                     client_socket.send(b'#> ')
                     while b'\n' not in cmd_buffer:
-                        cmd_buffer += client_socket.recv(64)
+                        data = client_socket.recv(64)
+                        if not data:
+                            self.print_verbose('[*] Client disconnected.')
+                            return
+                        cmd_buffer += data
                     response = execute(cmd_buffer.decode())
                     if response:
                         client_socket.send(response.encode())
                     cmd_buffer = b''
 
-            while True:
-                data = client_socket.recv(64)
-                if not data:
-                    self.print_verbose('[*] Client disconnected.')
-                    break
-                print(data.decode(), end='')
+            else:
+                while True:
+                    data = client_socket.recv(64)
+                    if not data:
+                        self.print_verbose('[*] Client disconnected.')
+                        break
+                    print(data.decode(), end='')
 
         except Exception as e:
             self.print_verbose(f'[!] Error in handling client: {e}')
