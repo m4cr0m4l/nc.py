@@ -20,7 +20,7 @@ class NetCat:
     def __init__(self, args, buffer=None):
         self.args = args
         self.buffer = buffer
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket = socket.socket(socket.AF_INET6 if self.args.ipv6 else socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     def run(self):
@@ -144,6 +144,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Python Netcat')
     parser.add_argument('target', nargs='?', default='127.0.0.1', help='specified IP')
     parser.add_argument('port', type=int, nargs='?', default='8888', help='specified port')
+    parser.add_argument('-6', '--ipv6', action='store_true', help='use IPv6')
     parser.add_argument('-c', '--command', action='store_true', help='initialize command shell')
     parser.add_argument('-e', '--exec', help='execute specified command')
     parser.add_argument('-l', '--listen', action='store_true', help='listen')
