@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import os
 import socket
 import ssl
 import subprocess
@@ -18,6 +19,15 @@ def execute(cmd):
         return output.stdout
     except Exception as e:
         return f'Error executing command: {e}'
+
+def check_file(file):
+    if not os.path.isfile(file):
+        print(f"[!] {file} not such file.", file=sys.stderr)
+        sys.exit(1)
+
+    if not os.access(file, os.R_OK):
+        print(f"[!] {file} access denied.", file=sys.stderr)
+        sys.exit(1)
 
 
 class NetCat:
@@ -51,7 +61,7 @@ class NetCat:
             # Send standard input
             if not sys.stdin.isatty():
                 while True:
-                    data = sys.stdin.buffer.read(4096)
+                    data = sys.stdin.buffer.read(8192)
                     if not data:
                         break
                     self.socket.send(data)
@@ -86,6 +96,8 @@ class NetCat:
     def listen(self):
         try:
             if self.args.ssl:
+                check_file(self.args.ssl_cert)
+                check_file(self.args.ssl_key)
                 context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
                 context.load_cert_chain(self.args.ssl_cert, self.args.ssl_key)
 
