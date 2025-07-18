@@ -21,9 +21,8 @@ def execute(cmd):
 
 
 class NetCat:
-    def __init__(self, args, buffer=None):
+    def __init__(self, args):
         self.args = args
-        self.buffer = buffer
         self.socket = socket.socket(socket.AF_INET6 if self.args.ipv6 else socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -48,10 +47,15 @@ class NetCat:
 
             self.socket.connect((self.args.target, self.args.port))
             self.print_verbose(f'[*] Connected to {self.args.target}:{self.args.port}')
-            if self.buffer:
-                self.socket.send(self.buffer)
-                self.socket.close()
-                sys.exit()
+
+            # Send standard input
+            if not sys.stdin.isatty():
+                while True:
+                    data = sys.stdin.buffer.read(4096)
+                    if not data:
+                        break
+                    self.socket.send(data)
+                return
 
             threading.Thread(target=self.handle_user_input, daemon=True).start()
 
@@ -73,7 +77,6 @@ class NetCat:
             print(f'[!] An unexpected error occurred: {e}', file=sys.stderr)
         finally:
             self.socket.close()
-            sys.exit()
 
     def handle_user_input(self):
         while True:
@@ -112,7 +115,6 @@ class NetCat:
             print(f'[!] An unexpected error occurred: {e}', file=sys.stderr)
         finally:
             self.socket.close()
-            sys.exit()
 
     def handle(self, client_socket):
         try:
@@ -137,11 +139,12 @@ class NetCat:
 
             else:
                 while True:
-                    data = client_socket.recv(64)
+                    data = client_socket.recv(4096)
                     if not data:
                         self.print_verbose('[*] Client disconnected.')
                         break
-                    print(data.decode(), end='')
+                    sys.stdout.buffer.write(data)
+                    sys.stdout.flush()
 
         except Exception as e:
             self.print_verbose(f'[!] Error in handling client: {e}')
@@ -163,13 +166,6 @@ if __name__ == '__main__':
     parser.add_argument('--ssl-key', default='server.key', help='specify SSL private key')
     parser.add_argument('--ssl-verify', action='store_true', help='verify SSL certificates')
     args = parser.parse_args()
-    if args.listen:
-        buffer = ''
-    else:
-        if not sys.stdin.isatty():
-            buffer = sys.stdin.buffer.read()
-        else:
-            buffer = ''
 
-    nc = NetCat(args, buffer)
+    nc = NetCat(args)
     nc.run()
