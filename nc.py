@@ -68,8 +68,8 @@ class NetCat:
                     self.socket.send(data)
                 return
 
-            threading.Thread(target=self.handle_user_input, daemon=True).start()
             threading.Thread(target=self.receive_data, daemon=True).start()
+            threading.Thread(target=self.handle_user_input, daemon=True).start()
 
             self.exit_event.wait()
 
@@ -186,8 +186,9 @@ if __name__ == '__main__':
     parser.add_argument('target', nargs='?', default='127.0.0.1', help='specified IP')
     parser.add_argument('port', type=int, nargs='?', default='8888', help='specified port')
     parser.add_argument('-6', '--ipv6', action='store_true', help='use IPv6')
-    parser.add_argument('-c', '--command', action='store_true', help='initialize command shell')
-    parser.add_argument('-e', '--exec', help='execute specified command')
+    group = parser.add_mutually_exclusive_group(required=False)
+    group.add_argument('-c', '--command', action='store_true', help='initialize command shell')
+    group.add_argument('-e', '--exec', help='execute specified command')
     parser.add_argument('-l', '--listen', action='store_true', help='listen')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('-s', '--ssl', action='store_true', help='enable SSL')
