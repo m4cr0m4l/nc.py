@@ -35,6 +35,7 @@ class NetCat:
         self.args = args
         self.socket = socket.socket(socket.AF_INET6 if self.args.ipv6 else socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.exit_event = threading.Event()
 
     def run(self):
         if self.args.listen:
@@ -68,30 +69,46 @@ class NetCat:
                 return
 
             threading.Thread(target=self.handle_user_input, daemon=True).start()
+            threading.Thread(target=self.receive_data, daemon=True).start()
 
-            while True:
-                response = self.socket.recv(4096)
-                if not response:
-                    self.print_verbose('[*] Connection closed by the server.')
-                    return
-                sys.stdout.buffer.write(response)
-                sys.stdout.flush()
+            self.exit_event.wait()
 
-        except KeyboardInterrupt:
-            self.print_verbose('[!] User terminated.')
         except ssl.SSLError as e:
             print(f'[!] SSL error: {e}', file=sys.stderr)
         except socket.error as e:
             print(f'[!] Socket error: {e}', file=sys.stderr)
+        except KeyboardInterrupt:
+            self.print_verbose('[!] User terminated.')
         except Exception as e:
             print(f'[!] An unexpected error occurred: {e}', file=sys.stderr)
         finally:
             self.socket.close()
 
+    def receive_data(self):
+        try:
+            while True:
+                response = self.socket.recv(4096)
+                if not response:
+                    self.print_verbose('[*] Connection closed by the server.')
+                    self.exit_event.set()
+                    return
+                sys.stdout.buffer.write(response)
+                sys.stdout.flush()
+
+        except socket.error as e:
+            print(f'[!] Socket error: {e}', file=sys.stderr)
+        finally:
+            self.exit_event.set()
+
     def handle_user_input(self):
-        while True:
-            user_input = input() + '\n'
-            self.socket.send(user_input.encode())
+        try:
+            while True:
+                user_input = input() + '\n'
+                self.socket.send(user_input.encode())
+        except EOFError:
+            pass
+        finally:
+            self.exit_event.set()
 
     def listen(self):
         try:
@@ -111,7 +128,7 @@ class NetCat:
                     self.print_verbose(f'[*] Accepted connection from {address[0]}:{address[1]}')
                     if self.args.ssl:
                         client_socket = context.wrap_socket(client_socket, server_side=True)
-                    client_thread = threading.Thread(target=self.handle, args=(client_socket,), daemon=True)
+                    client_thread = threading.Thread(target=self.handle_client, args=(client_socket,), daemon=True)
                     client_thread.start()
 
                 except ssl.SSLError as e:
@@ -128,7 +145,7 @@ class NetCat:
         finally:
             self.socket.close()
 
-    def handle(self, client_socket):
+    def handle_client(self, client_socket):
         try:
             if self.args.exec:
                 output = execute(self.args.exec)
