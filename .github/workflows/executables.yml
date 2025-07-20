@@ -29,7 +29,47 @@ jobs:
       run: choco install upx
 
     - name: Build executable
-      run: pyinstaller --onefile nc.py
+      run: |
+        pyinstaller -F \
+          --exclude-module bz2 \
+          --exclude-module calendar \
+          --exclude-module cgi \
+          --exclude-module dbm \
+          --exclude-module difflib \
+          --exclude-module email \
+          --exclude-module gzip \
+          --exclude-module http \
+          --exclude-module inspect \
+          --exclude-module multiprocessing \
+          --exclude-module pickle \
+          --exclude-module pydoc \
+          --exclude-module sqlite3 \
+          --exclude-module turtle \
+          --exclude-module unittest \
+          --exclude-module urllib \
+          --exclude-module xml \
+          --exclude-module zlib \
+          --exclude-module lzma \
+          --exclude-module asyncio \
+          --exclude-module concurrent \
+          --exclude-module http.server \
+          --exclude-module xml.dom \
+          --exclude-module xml.sax \
+          --exclude-module pdb \
+          --exclude-module trace \
+          --exclude-module doctest \
+          --exclude-module unittest.mock \
+          --exclude-module email.mime \
+          --exclude-module xmlrpc \
+          --exclude-module socketserver \
+          --exclude-module ftplib \
+          --exclude-module telnetlib \
+          --exclude-module smtplib \
+          --exclude-module http.cookies \
+          --exclude-module xmlrpc.client \
+          --exclude-module zipfile \
+          nc.py
+      shell: bash
 
     - name: Rename executable
       run: |
