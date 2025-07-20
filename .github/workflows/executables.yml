@@ -24,6 +24,10 @@ jobs:
     - name: Install PyInstaller
       run: pip install pyinstaller
 
+    - if: runner.os == 'Windows'
+      name: Install UPX
+      run: choco install upx
+
     - name: Build executable
       run: pyinstaller --onefile nc.py
 

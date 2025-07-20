@@ -8,6 +8,15 @@ import subprocess
 import sys
 import threading
 
+def check_file(file):
+    if not os.path.isfile(file):
+        print(f"[!] {file} not such file.", file=sys.stderr)
+        sys.exit(1)
+
+    if not os.access(file, os.R_OK):
+        print(f"[!] {file} access denied.", file=sys.stderr)
+        sys.exit(1)
+
 def execute(cmd):
     cmd = cmd.strip()
     if not cmd:
@@ -19,15 +28,6 @@ def execute(cmd):
         return output.stdout
     except Exception as e:
         return f'Error executing command: {e}'
-
-def check_file(file):
-    if not os.path.isfile(file):
-        print(f"[!] {file} not such file.", file=sys.stderr)
-        sys.exit(1)
-
-    if not os.access(file, os.R_OK):
-        print(f"[!] {file} access denied.", file=sys.stderr)
-        sys.exit(1)
 
 
 class NetCat:
