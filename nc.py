@@ -66,7 +66,6 @@ class NetCat:
                     if not data:
                         break
                     self.socket.send(data)
-                return
 
             threading.Thread(target=self.receive_data, daemon=True).start()
             threading.Thread(target=self.handle_user_input, daemon=True).start()
