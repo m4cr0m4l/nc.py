@@ -167,6 +167,12 @@ class NetCat:
         key_isfile = os.path.isfile(key)
         key_readable = os.access(key, os.R_OK)
 
+        if not cert_isfile and key_isfile:
+            print('[!] SSL certificate file is missing, but key file is present.', file=sys.stderr)
+            sys.exit(1)
+        if cert_isfile and not key_isfile:
+            print('[!] SSL private key is missing, but certificate is present', file=sys.stderr)
+            sys.exit(1)
         if cert_isfile and not cert_readable:
             print('[!] SSL certificate file: access denied.', file=sys.stderr)
             sys.exit(1)
