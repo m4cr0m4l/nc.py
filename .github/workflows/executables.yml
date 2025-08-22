@@ -31,43 +31,45 @@ jobs:
     - name: Build executable
       run: |
         pyinstaller -F \
+          --exclude-module asyncio \
+          --exclude-module bdb \
           --exclude-module bz2 \
           --exclude-module calendar \
           --exclude-module cgi \
+          --exclude-module concurrent \
+          --exclude-module curses \
           --exclude-module dbm \
           --exclude-module difflib \
+          --exclude-module doctest \
           --exclude-module email \
+          --exclude-module ftplib \
           --exclude-module gzip \
+          --exclude-module html \
           --exclude-module http \
           --exclude-module inspect \
+          --exclude-module imaplib \
+          --exclude-module lzma \
+          --exclude-module mimetypes \
           --exclude-module multiprocessing \
+          --exclude-module pdb \
           --exclude-module pickle \
+          --exclude-module poplib \
           --exclude-module pydoc \
+          --exclude-module socketserver \
+          --exclude-module smtplib \
           --exclude-module sqlite3 \
+          --exclude-module tarfile \
+          --exclude-module telnetlib \
+          --exclude-module tkinter \
+          --exclude-module trace \
           --exclude-module turtle \
           --exclude-module unittest \
           --exclude-module urllib \
+          --exclude-module webbrowser \
           --exclude-module xml \
-          --exclude-module zlib \
-          --exclude-module lzma \
-          --exclude-module asyncio \
-          --exclude-module concurrent \
-          --exclude-module http.server \
-          --exclude-module xml.dom \
-          --exclude-module xml.sax \
-          --exclude-module pdb \
-          --exclude-module trace \
-          --exclude-module doctest \
-          --exclude-module unittest.mock \
-          --exclude-module email.mime \
           --exclude-module xmlrpc \
-          --exclude-module socketserver \
-          --exclude-module ftplib \
-          --exclude-module telnetlib \
-          --exclude-module smtplib \
-          --exclude-module http.cookies \
-          --exclude-module xmlrpc.client \
           --exclude-module zipfile \
+          --exclude-module zlib \
           nc.py
       shell: bash
 
