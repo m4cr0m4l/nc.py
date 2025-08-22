@@ -196,5 +196,8 @@ if __name__ == '__main__':
     parser.add_argument('--ssl-verify', action='store_true', help='verify SSL certificates')
     args = parser.parse_args()
 
+    if args.ipv6 and args.target == '127.0.0.1':
+        args.target = '::1'
+
     nc = NetCat(args)
     nc.run()
