@@ -71,6 +71,14 @@ class NetCat:
                     if not data:
                         break
                     self.socket.send(data)
+                # drain any TLS close/alert from the peer
+                if args.ssl:
+                    try:
+                        self.socket.settimeout(0.1)
+                        self.socket.recv(4096)
+                    except TimeoutError:
+                        pass
+                return
 
             threading.Thread(target=self.receive_data, daemon=True).start()
             threading.Thread(target=self.handle_user_input, daemon=True).start()
