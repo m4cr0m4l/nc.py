@@ -33,9 +33,14 @@ def execute(cmd):
 class NetCat:
     def __init__(self, args):
         self.args = args
-        self.socket = socket.socket(socket.AF_INET6 if self.args.ipv6 else socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket = self.create_socket()
         self.exit_event = threading.Event()
+
+    def create_socket(self):
+        address_family = socket.AF_INET6 if self.args.ipv6 else socket.AF_INET
+        new_socket = socket.socket(address_family, socket.SOCK_STREAM)
+        new_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return new_socket
 
     def run(self):
         if self.args.listen:
