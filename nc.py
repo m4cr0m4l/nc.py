@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import datetime
 import os
 import socket
 import ssl
@@ -8,14 +9,13 @@ import subprocess
 import sys
 import threading
 
-def check_file(file):
-    if not os.path.isfile(file):
-        print(f"[!] {file} not such file.", file=sys.stderr)
-        sys.exit(1)
-
-    if not os.access(file, os.R_OK):
-        print(f"[!] {file} access denied.", file=sys.stderr)
-        sys.exit(1)
+try:
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.x509.oid import NameOID
+    from cryptography import x509
+except ImportError:
+    pass
 
 def execute(cmd):
     cmd = cmd.strip()
@@ -28,6 +28,45 @@ def execute(cmd):
         return output.stdout
     except Exception as e:
         return f'Error executing command: {e}'
+
+def generate_cert(ssl_cert = 'server.crt', 
+                  ssl_key = 'server.key',
+                  country = 'AU',
+                  state = '',
+                  locality = '',
+                  organization = '',
+                  common_name = 'localhost',
+                  valid_days = 365):
+
+    key = ed25519.Ed25519PrivateKey.generate()
+    with open(ssl_key, 'wb') as f:
+        f.write(key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        ))
+
+    subject = issuer = x509.Name([
+        x509.NameAttribute(NameOID.COUNTRY_NAME, country),
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, state),
+        x509.NameAttribute(NameOID.LOCALITY_NAME, locality),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, organization),
+        x509.NameAttribute(NameOID.COMMON_NAME, common_name),
+    ])
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now)
+        .not_valid_after(now + datetime.timedelta(days=valid_days))
+        .add_extension(x509.SubjectAlternativeName([x509.DNSName(common_name)]), critical=False)
+        .sign(key, algorithm=None)
+    )
+    with open(ssl_cert, 'wb') as f:
+        f.write(cert.public_bytes(serialization.Encoding.PEM))
 
 
 class NetCat:
@@ -122,11 +161,35 @@ class NetCat:
         finally:
             self.exit_event.set()
 
+    def check_ssl_files(self, cert, key):
+        cert_isfile = os.path.isfile(cert)
+        cert_readable = os.access(cert, os.R_OK)
+        key_isfile = os.path.isfile(key)
+        key_readable = os.access(key, os.R_OK)
+
+        if cert_isfile and not cert_readable:
+            print('[!] SSL certificate file: access denied.', file=sys.stderr)
+            sys.exit(1)
+        if key_isfile and not key_readable:
+            print('[!] SSL private key: access denied.', file=sys.stderr)
+            sys.exit(1)
+        if cert_isfile and key_isfile:
+            return
+
+        if 'cryptography' not in sys.modules:
+            print("[!] Install the cryptography package or provide certificate and key files.", file=sys.stderr)
+            sys.exit(1)
+
+        try:
+            generate_cert(cert, key)
+        except Exception as e:
+            print(f"[!] Failed to generate cert/key: {e}", file=sys.stderr)
+            sys.exit(1)
+
     def listen(self):
         try:
             if self.args.ssl:
-                check_file(self.args.ssl_cert)
-                check_file(self.args.ssl_key)
+                self.check_ssl_files(self.args.ssl_cert, self.args.ssl_key)
                 context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
                 context.load_cert_chain(self.args.ssl_cert, self.args.ssl_key)
 
