@@ -1,3 +1,6 @@
+server.key
+server.crt
+
 # Environments
 .venv
 venv/
