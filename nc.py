@@ -273,8 +273,12 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--listen', action='store_true', help='listen')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('-s', '--ssl', action='store_true', help='enable SSL')
-    parser.add_argument('--ssl-cert', default='server.crt', help='specify SSL certificate file')
-    parser.add_argument('--ssl-key', default='server.key', help='specify SSL private key')
+    parser.add_argument('--ssl-cert', 
+                        default=os.environ.get('NCPY_SSL_CERT', 'server.crt'), 
+                        help='specify SSL certificate file')
+    parser.add_argument('--ssl-key', 
+                        default=os.environ.get('NCPY_SSL_KEY', 'server.key'), 
+                        help='specify SSL private key')
     parser.add_argument('--ssl-verify', action='store_true', help='verify SSL certificates')
     args = parser.parse_args()
 
