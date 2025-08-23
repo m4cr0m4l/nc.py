@@ -24,19 +24,16 @@ jobs:
     - name: Install dependencies
       run: pip install -r requirements.txt
 
-    - name: Install PyInstaller
-      run: pip install pyinstaller
+    - name: Install PyArmor and PyInstaller
+      run: pip install pyarmor pyinstaller
 
     - if: runner.os == 'Windows'
       name: Install UPX
       run: choco install upx
 
-    - name: Build executable
+    - name: Obfuscate and build executable
       run: |
-        pyinstaller -F \
-          --exclude-module turtle \
-          --exclude-module webbrowser \
-          nc.py
+        pyarmor gen --pack onefile --enable-jit --private --assert-import nc.py
       shell: bash
 
     - name: Rename executable
