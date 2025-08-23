@@ -7,7 +7,7 @@ To download the Python Netcat script, you can use the following curl command:
 curl -LO https://raw.githubusercontent.com/m4cr0m4l/nc.py/master/nc.py
 ```
 
-Additionally, pre-built binaries are available in the [releases section](https://github.com/m4cr0m4l/nc.py/releases) for Windows, Linux, and macOS. These binaries are created using PyInstaller, so it is not necessary to have Python installed on your system to run the script. You can simply download the appropriate binary for your operating system and execute it directly.
+Additionally, pre-built binaries are available in the [releases section](https://github.com/m4cr0m4l/nc.py/releases) for Windows, Linux, and macOS. The script is obfuscated with PyArmor and packed with PyInstaller, generating the executable, so it is not necessary to have Python installed on your system to run the script. You can simply download the appropriate binary for your operating system and execute it directly.
 
 
 ## Usage
@@ -58,6 +58,10 @@ Upload a file to the server:
 ```
 nc.py -l 0.0.0.0 8888 > file.txt
 ```
+
+## Environment variables
+- `NCPY_SSL_CERT`: path to the SSL certificate file.
+- `NCPY_SSL_KEY`: path to the SSL private key.
 
 ## Donations
 If you find this utility helpful and would like to support further development, consider making a [donation](https://github.com/m4cr0m4l).
