@@ -73,6 +73,8 @@ class NetCat:
     def __init__(self, args):
         self.args = args
         self.socket = self.create_socket()
+        self.clients = []
+        self.lock = threading.Lock()
         self.exit_event = threading.Event()
 
     def create_socket(self):
@@ -121,7 +123,6 @@ class NetCat:
 
             threading.Thread(target=self.receive_data, daemon=True).start()
             threading.Thread(target=self.handle_user_input, daemon=True).start()
-
             self.exit_event.wait()
 
         except ssl.SSLError as e:
@@ -209,8 +210,14 @@ class NetCat:
                     self.print_verbose(f'[*] Accepted connection from {address[0]}:{address[1]}')
                     if self.args.ssl:
                         client_socket = context.wrap_socket(client_socket, server_side=True)
-                    client_thread = threading.Thread(target=self.handle_client, args=(client_socket,), daemon=True)
-                    client_thread.start()
+
+                    if not self.args.exec and not self.args.command:
+                        with self.lock:
+                            self.clients.append(client_socket)
+                        threading.Thread(target=self.handle_server_input, daemon=True).start()
+
+                    threading.Thread(target=self.handle_client, args=(client_socket,), daemon=True).start()
+
 
                 except ssl.SSLError as e:
                     print(f'[!] SSL error: {e}', file=sys.stderr)
@@ -252,6 +259,8 @@ class NetCat:
                     data = client_socket.recv(4096)
                     if not data:
                         self.print_verbose('[*] Client disconnected.')
+                        with self.lock:
+                            self.clients.remove(client_socket)
                         break
                     sys.stdout.buffer.write(data)
                     sys.stdout.flush()
@@ -260,6 +269,18 @@ class NetCat:
             self.print_verbose(f'[!] Error in handling client: {e}')
         finally:
             client_socket.close()
+
+    def handle_server_input(self):
+        try:
+            while True:
+                server_input = input() + '\n'
+                self.send_to_all_clients(server_input.encode())
+        except EOFError:
+            pass
+
+    def send_to_all_clients(self, data):
+        for client in self.clients:
+            client.send(data)
 
 
 if __name__ == '__main__':
