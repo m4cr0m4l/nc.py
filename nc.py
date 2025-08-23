@@ -282,6 +282,10 @@ if __name__ == '__main__':
     parser.add_argument('--ssl-verify', action='store_true', help='verify SSL certificates')
     args = parser.parse_args()
 
+    if args.ssl:
+        args.ssl_cert = os.path.expanduser(args.ssl_cert)
+        args.ssl_key = os.path.expanduser(args.ssl_key)
+
     if args.ipv6 and args.target == '127.0.0.1':
         args.target = '::1'
 
