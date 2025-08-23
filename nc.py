@@ -11,7 +11,7 @@ import threading
 
 try:
     from cryptography.hazmat.primitives.asymmetric import ed25519
-    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives import serialization
     from cryptography.x509.oid import NameOID
     from cryptography import x509
 except ImportError:
@@ -29,7 +29,7 @@ def execute(cmd):
     except Exception as e:
         return f'Error executing command: {e}'
 
-def generate_cert(ssl_cert = 'server.crt', 
+def generate_ssl_files(ssl_cert = 'server.crt', 
                   ssl_key = 'server.key',
                   country = 'AU',
                   state = '',
@@ -187,9 +187,9 @@ class NetCat:
             sys.exit(1)
 
         try:
-            generate_cert(cert, key)
+            generate_ssl_files(cert, key)
         except Exception as e:
-            print(f"[!] Failed to generate cert/key: {e}", file=sys.stderr)
+            print(f"[!] Failed to generate certificate and key files: {e}", file=sys.stderr)
             sys.exit(1)
 
     def listen(self):
