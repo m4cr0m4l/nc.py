@@ -33,6 +33,7 @@ jobs:
 
     - name: Obfuscate and build executable
       run: |
+        # pyarmor gen --pack onefile --enable-jit --private --mix-str --assert-import --obf-code 2 nc.py
         pyarmor gen --pack onefile --enable-jit --private --assert-import nc.py
       shell: bash
 
