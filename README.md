@@ -12,25 +12,29 @@ Additionally, pre-built binaries are available in the [releases section](https:/
 
 ## Usage
 ```
-usage: nc.py [-h] [-6] [-c] [-e EXEC] [-l] [-v] [-s] [--ssl-cert SSL_CERT] [--ssl-key SSL_KEY] [--ssl-verify] [target] [port]
+usage: nc.py [-h] [-6] [-c | -e EXEC] [-l] [-v] [-m MAX_CONNS] [-s]
+             [--ssl-cert SSL_CERT] [--ssl-key SSL_KEY] [--ssl-verify]
+             [target] [port]
 
 Python Netcat
 
 positional arguments:
-  target               specified IP
-  port                 specified port
+  target                specified IP
+  port                  specified port
 
 options:
-  -h, --help           show this help message and exit
-  -6, --ipv6           use IPv6
-  -c, --command        initialize command shell
-  -e, --exec EXEC      execute specified command
-  -l, --listen         listen
-  -v, --verbose        be verbose
-  -s, --ssl            enable SSL
-  --ssl-cert SSL_CERT  specify SSL certificate file
-  --ssl-key SSL_KEY    specify SSL private key
-  --ssl-verify         verify SSL certificates
+  -h, --help            show this help message and exit
+  -6, --ipv6            use IPv6
+  -c, --command         initialize command shell
+  -e, --exec EXEC       execute specified command
+  -l, --listen          listen
+  -v, --verbose         be verbose
+  -m, --max-conns MAX_CONNS
+                        maximum simultaneous connections
+  -s, --ssl             enable SSL
+  --ssl-cert SSL_CERT   specify SSL certificate file
+  --ssl-key SSL_KEY     specify SSL private key
+  --ssl-verify          verify SSL certificates
 ```
 
 ## Examples

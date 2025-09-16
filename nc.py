@@ -76,6 +76,7 @@ class NetCat:
         self.clients = []
         self.lock = threading.Lock()
         self.exit_event = threading.Event()
+        self.max_conns_reached = False
 
     def create_socket(self):
         address_family = socket.AF_INET6 if self.args.ipv6 else socket.AF_INET
@@ -206,18 +207,25 @@ class NetCat:
 
             while True:
                 try:
+                    with self.lock:
+                        if len(self.clients) >= self.args.max_conns:
+                            if not self.max_conns_reached:
+                                self.print_verbose(f'[!] Maximum connections reached: {self.args.max_conns}')
+                                self.max_conns_reached = True
+                            continue
+
                     client_socket, address = self.socket.accept()
                     self.print_verbose(f'[*] Accepted connection from {address[0]}:{address[1]}')
                     if self.args.ssl:
                         client_socket = context.wrap_socket(client_socket, server_side=True)
 
+                    with self.lock:
+                        self.clients.append(client_socket)
+
                     if not self.args.exec and not self.args.command:
-                        with self.lock:
-                            self.clients.append(client_socket)
                         threading.Thread(target=self.handle_server_input, daemon=True).start()
 
                     threading.Thread(target=self.handle_client, args=(client_socket,), daemon=True).start()
-
 
                 except ssl.SSLError as e:
                     print(f'[!] SSL error: {e}', file=sys.stderr)
@@ -259,8 +267,6 @@ class NetCat:
                     data = client_socket.recv(4096)
                     if not data:
                         self.print_verbose('[*] Client disconnected.')
-                        with self.lock:
-                            self.clients.remove(client_socket)
                         break
                     sys.stdout.buffer.write(data)
                     sys.stdout.flush()
@@ -268,6 +274,9 @@ class NetCat:
         except Exception as e:
             self.print_verbose(f'[!] Error in handling client: {e}')
         finally:
+            with self.lock:
+                self.clients.remove(client_socket)
+                self.max_conns_reached = False
             client_socket.close()
 
     def handle_server_input(self):
@@ -293,6 +302,7 @@ if __name__ == '__main__':
     group.add_argument('-e', '--exec', help='execute specified command')
     parser.add_argument('-l', '--listen', action='store_true', help='listen')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
+    parser.add_argument('-m', '--max-conns', type=int, default=5, help='maximum simultaneous connections')
     parser.add_argument('-s', '--ssl', action='store_true', help='enable SSL')
     parser.add_argument('--ssl-cert', 
                         default=os.environ.get('NCPY_SSL_CERT', 'server.crt'), 
