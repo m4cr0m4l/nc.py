@@ -29,6 +29,37 @@ def execute(cmd):
     except Exception as e:
         return f'Error executing command: {e}'
 
+def check_ssl_files(cert, key):
+        cert_isfile = os.path.isfile(cert)
+        cert_readable = os.access(cert, os.R_OK)
+        key_isfile = os.path.isfile(key)
+        key_readable = os.access(key, os.R_OK)
+
+        if not cert_isfile and key_isfile:
+            print('[!] SSL certificate file is missing, but key file is present.', file=sys.stderr)
+            sys.exit(1)
+        if cert_isfile and not key_isfile:
+            print('[!] SSL private key is missing, but certificate is present', file=sys.stderr)
+            sys.exit(1)
+        if cert_isfile and not cert_readable:
+            print('[!] SSL certificate file: access denied.', file=sys.stderr)
+            sys.exit(1)
+        if key_isfile and not key_readable:
+            print('[!] SSL private key: access denied.', file=sys.stderr)
+            sys.exit(1)
+        if cert_isfile and key_isfile:
+            return
+
+        if 'cryptography' not in sys.modules:
+            print("[!] Install the cryptography package or provide certificate and key files.", file=sys.stderr)
+            sys.exit(1)
+
+        try:
+            generate_ssl_files(cert, key)
+        except Exception as e:
+            print(f"[!] Failed to generate certificate and key files: {e}", file=sys.stderr)
+            sys.exit(1)
+
 def generate_ssl_files(ssl_cert = 'server.crt', 
                   ssl_key = 'server.key',
                   country = 'AU',
@@ -163,41 +194,10 @@ class NetCat:
         finally:
             self.exit_event.set()
 
-    def check_ssl_files(self, cert, key):
-        cert_isfile = os.path.isfile(cert)
-        cert_readable = os.access(cert, os.R_OK)
-        key_isfile = os.path.isfile(key)
-        key_readable = os.access(key, os.R_OK)
-
-        if not cert_isfile and key_isfile:
-            print('[!] SSL certificate file is missing, but key file is present.', file=sys.stderr)
-            sys.exit(1)
-        if cert_isfile and not key_isfile:
-            print('[!] SSL private key is missing, but certificate is present', file=sys.stderr)
-            sys.exit(1)
-        if cert_isfile and not cert_readable:
-            print('[!] SSL certificate file: access denied.', file=sys.stderr)
-            sys.exit(1)
-        if key_isfile and not key_readable:
-            print('[!] SSL private key: access denied.', file=sys.stderr)
-            sys.exit(1)
-        if cert_isfile and key_isfile:
-            return
-
-        if 'cryptography' not in sys.modules:
-            print("[!] Install the cryptography package or provide certificate and key files.", file=sys.stderr)
-            sys.exit(1)
-
-        try:
-            generate_ssl_files(cert, key)
-        except Exception as e:
-            print(f"[!] Failed to generate certificate and key files: {e}", file=sys.stderr)
-            sys.exit(1)
-
     def listen(self):
         try:
             if self.args.ssl:
-                self.check_ssl_files(self.args.ssl_cert, self.args.ssl_key)
+                check_ssl_files(self.args.ssl_cert, self.args.ssl_key)
                 context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
                 context.load_cert_chain(self.args.ssl_cert, self.args.ssl_key)
 
