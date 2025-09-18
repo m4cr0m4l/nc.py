@@ -204,6 +204,8 @@ class NetCat:
             self.socket.bind((self.args.target, self.args.port))
             self.socket.listen(5)
             self.print_verbose(f'[*] Listening on {self.args.target}:{self.args.port}')
+            if self.args.ssl:
+                self.socket = context.wrap_socket(self.socket, server_side=True)
 
             while True:
                 try:
@@ -216,8 +218,6 @@ class NetCat:
 
                     client_socket, address = self.socket.accept()
                     self.print_verbose(f'[*] Accepted connection from {address[0]}:{address[1]}')
-                    if self.args.ssl:
-                        client_socket = context.wrap_socket(client_socket, server_side=True)
 
                     with self.lock:
                         self.clients.append(client_socket)
