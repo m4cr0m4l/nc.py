@@ -294,8 +294,8 @@ class NetCat:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Python Netcat')
-    parser.add_argument('target', nargs='?', default='127.0.0.1', help='specified IP')
-    parser.add_argument('port', type=int, nargs='?', default='8888', help='specified port')
+    parser.add_argument('target', help='specified IP')
+    parser.add_argument('port', type=int, help='specified port')
     parser.add_argument('-6', '--ipv6', action='store_true', help='use IPv6')
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument('-c', '--command', action='store_true', help='initialize command shell')
@@ -316,9 +316,6 @@ if __name__ == '__main__':
     if args.ssl:
         args.ssl_cert = os.path.expanduser(args.ssl_cert)
         args.ssl_key = os.path.expanduser(args.ssl_key)
-
-    if args.ipv6 and args.target == '127.0.0.1':
-        args.target = '::1'
 
     nc = NetCat(args)
     nc.run()
