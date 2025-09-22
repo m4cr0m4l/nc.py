@@ -3,6 +3,7 @@
 import argparse
 import datetime
 import os
+import select
 import socket
 import ssl
 import subprocess
@@ -153,8 +154,12 @@ class NetCat:
                         pass
                 return
 
-            threading.Thread(target=self.receive_data, daemon=True).start()
-            threading.Thread(target=self.handle_user_input, daemon=True).start()
+            receive_thread = threading.Thread(target=self.receive_data, daemon=True)
+            input_thread = threading.Thread(target=self.handle_user_input, daemon=True)
+
+            receive_thread.start()
+            input_thread.start()
+            
             self.exit_event.wait()
 
         except ssl.SSLError as e:
@@ -166,21 +171,24 @@ class NetCat:
         except Exception as e:
             print(f'[!] An unexpected error occurred: {e}', file=sys.stderr)
         finally:
+            self.exit_event.set()
             self.socket.close()
 
     def receive_data(self):
         try:
-            while True:
-                response = self.socket.recv(4096)
-                if not response:
-                    self.print_verbose('[*] Connection closed by the server.')
-                    self.exit_event.set()
-                    return
-                sys.stdout.buffer.write(response)
-                sys.stdout.flush()
+            while not self.exit_event.is_set():
+                if select.select([self.socket], [], [], 0.01)[0]:
+                    response = self.socket.recv(4096)
+                    if not response:
+                        self.print_verbose('[*] Connection closed by the server.')
+                        return
+                    sys.stdout.buffer.write(response)
+                    sys.stdout.flush()
 
         except socket.error as e:
             print(f'[!] Socket error: {e}', file=sys.stderr)
+        except Exception as e:
+            print(f'[!] Error receiving data: {e}', file=sys.stderr)
         finally:
             self.exit_event.set()
 
@@ -191,6 +199,8 @@ class NetCat:
                 self.socket.send(user_input.encode())
         except EOFError:
             pass
+        except Exception as e:
+            print(f'[!] Error handling input: {e}', file=sys.stderr)
         finally:
             self.exit_event.set()
 
