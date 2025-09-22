@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-import datetime
 import os
 import select
 import socket
@@ -15,6 +14,7 @@ try:
     from cryptography.hazmat.primitives import serialization
     from cryptography.x509.oid import NameOID
     from cryptography import x509
+    import datetime
 except ImportError:
     pass
 
