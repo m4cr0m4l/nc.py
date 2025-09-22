@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
+from subprocess import Popen, PIPE, STDOUT
+
 import argparse
 import os
 import select
 import socket
 import ssl
-import subprocess
 import sys
 import threading
 
@@ -17,18 +18,6 @@ try:
     import datetime
 except ImportError:
     pass
-
-def execute(cmd):
-    cmd = cmd.strip()
-    if not cmd:
-        return
-    try:
-        output = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        if output.returncode != 0:
-            return output.stderr
-        return output.stdout
-    except Exception as e:
-        return f'Error executing command: {e}'
 
 def check_ssl_files(cert, key):
         cert_isfile = os.path.isfile(cert)
@@ -235,7 +224,8 @@ class NetCat:
                     if not self.args.exec and not self.args.command:
                         threading.Thread(target=self.handle_server_input, daemon=True).start()
 
-                    threading.Thread(target=self.handle_client, args=(client_socket,), daemon=True).start()
+                    client_thread = threading.Thread(target=self.handle_client, args=(client_socket,), daemon=True)
+                    client_thread.start()
 
                 except ssl.SSLError as e:
                     print(f'[!] SSL error: {e}', file=sys.stderr)
@@ -254,8 +244,7 @@ class NetCat:
     def handle_client(self, client_socket):
         try:
             if self.args.exec:
-                output = execute(self.args.exec)
-                client_socket.send(output.encode())
+                self.execute(self.args.exec, client_socket)
 
             elif self.args.command:
                 cmd_buffer = b''
@@ -267,9 +256,7 @@ class NetCat:
                             self.print_verbose('[*] Client disconnected.')
                             return
                         cmd_buffer += data
-                    response = execute(cmd_buffer.decode())
-                    if response:
-                        client_socket.send(response.encode())
+                    self.execute(cmd_buffer.decode(), client_socket)
                     cmd_buffer = b''
 
             else:
@@ -289,6 +276,62 @@ class NetCat:
                 self.max_conns_reached = False
             client_socket.close()
 
+    def execute(self, cmd, client_socket):
+        cmd = cmd.strip()
+        if not cmd:
+            return
+        
+        try:
+            process = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT, 
+                            shell=True, text=True)
+
+            stop_event = threading.Event()
+            
+            def handle_process_output():
+                try:
+                    while not stop_event.is_set():
+                        output = process.stdout.readline()
+                        if not output:
+                            break
+                        client_socket.send(output.encode())
+
+                except Exception as e:
+                    self.print_verbose(f'[!] Error handling process output: {e}')
+                finally:
+                    stop_event.set()
+
+            def handle_process_input():
+                try:
+                    while not stop_event.is_set():
+                        if select.select([client_socket], [], [], 0.01)[0]:
+                            data = client_socket.recv(4096)
+                            if not data:
+                                self.print_verbose('[*] Client disconnected.')
+                                break
+                            if process.poll() is not None:
+                                break
+                            process.stdin.write(data.decode())
+                            process.stdin.flush()
+
+                except Exception as e:
+                    self.print_verbose(f'[!] Error handling process input: {e}')
+                finally:
+                    stop_event.set()
+
+            output_thread = threading.Thread(target=handle_process_output, daemon=True)
+            input_thread = threading.Thread(target=handle_process_input, daemon=True)
+            
+            output_thread.start()
+            input_thread.start()
+
+            stop_event.wait()
+
+            if process.poll() is None:
+                process.kill()
+
+        except Exception as e:
+            self.print_verbose(f'[!] Error executing command: {e}')
+
     def handle_server_input(self):
         try:
             while True:
@@ -296,6 +339,8 @@ class NetCat:
                 self.send_to_all_clients(server_input.encode())
         except EOFError:
             pass
+        except Exception as e:
+            print(f'[!] Error handling input: {e}', file=sys.stderr)
 
     def send_to_all_clients(self, data):
         for client in self.clients:
