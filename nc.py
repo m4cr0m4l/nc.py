@@ -106,7 +106,9 @@ class NetCat:
         return new_socket
 
     def run(self):
-        if self.args.listen:
+        if self.args.zero:
+            self.port_scan()
+        elif self.args.listen:
             self.listen()
         else:
             self.send()
@@ -114,6 +116,37 @@ class NetCat:
     def print_verbose(self, message):
         if self.args.verbose:
             print(message, file=sys.stderr)
+
+    def port_scan(self):
+        ports = self.parse_ports(self.args.port)
+        try:
+            for port in ports:
+                try:
+                    self.socket.settimeout(1)
+                    self.socket.connect((self.args.target, port))
+                    print(f'[+] Port {port} is open')
+
+                except socket.timeout:
+                    print(f'[-] Port {port} connection timed out')
+                except socket.error:
+                    print(f'[-] Port {port} is closed')
+
+        except KeyboardInterrupt:
+            self.print_verbose('[!] User terminated.')
+        except Exception as e:
+            print(f'[!] An unexpected error occurred: {e}', file=sys.stderr)
+        finally:
+            self.socket.close()
+
+    def parse_ports(self, ports_str):
+        ports = []
+        for part in ports_str.split(','):
+            if '-' in part:
+                start, end = map(int, part.split('-'))
+                ports.extend(range(start, end + 1))
+            else:
+                ports.append(int(part))
+        return ports
 
     def send(self):
         try:
@@ -269,7 +302,7 @@ class NetCat:
                     sys.stdout.flush()
 
         except Exception as e:
-            self.print_verbose(f'[!] Error in handling client: {e}')
+            self.print(f'[!] Error in handling client: {e}', file=sys.stderr)
         finally:
             with self.lock:
                 self.clients.remove(client_socket)
@@ -348,14 +381,16 @@ class NetCat:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Python Netcat')
+    parser = argparse.ArgumentParser(description='Python NetCat')
     parser.add_argument('target', help='specified IP')
-    parser.add_argument('port', type=int, help='specified port')
+    parser.add_argument('port', help='specified port')
     parser.add_argument('-6', '--ipv6', action='store_true', help='use IPv6')
-    group = parser.add_mutually_exclusive_group(required=False)
-    group.add_argument('-c', '--command', action='store_true', help='initialize command shell')
-    group.add_argument('-e', '--exec', help='execute specified command')
-    parser.add_argument('-l', '--listen', action='store_true', help='listen')
+    server_group = parser.add_mutually_exclusive_group(required=False)
+    server_group.add_argument('-c', '--command', action='store_true', help='initialize command shell')
+    server_group.add_argument('-e', '--exec', help='execute specified command')
+    mode_group = parser.add_mutually_exclusive_group(required=False)
+    mode_group.add_argument('-l', '--listen', action='store_true', help='listen')
+    mode_group.add_argument('-z', '--zero', action='store_true', help='zero I/O mode, report connection status only')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('-m', '--max-conns', type=int, default=5, help='maximum simultaneous connections')
     parser.add_argument('-s', '--ssl', action='store_true', help='enable SSL')
@@ -367,6 +402,13 @@ if __name__ == '__main__':
                         help='specify SSL private key')
     parser.add_argument('--ssl-verify', action='store_true', help='verify SSL certificates')
     args = parser.parse_args()
+
+    try:
+        if not args.zero:
+            args.port = int(args.port)
+    except ValueError:
+        print(f'[!] Invalid port format "{args.port}"', file=sys.stderr)
+        sys.exit(1)
 
     if args.ssl:
         args.ssl_cert = os.path.expanduser(args.ssl_cert)
