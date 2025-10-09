@@ -1,5 +1,5 @@
 # nc.py
-Python Netcat is an implementation of the versatile networking utility Netcat, allowing for communication between a client and a server over TCP. Inspired by the traditional Netcat tool, this script is implemented in Python and provides additional features such as SSL support and command execution capabilities. It can be used for various purposes, including remote command execution, file transfers, and establishing a command shell over a network connection. 
+Python Netcat is an implementation of the versatile networking utility Netcat, allowing for communication between a client and a server over TCP. Inspired by the traditional Netcat tool, this script is implemented in Python and provides additional features such as SSL support, command execution capabilities and port scanning. It can be used for various purposes, including remote command execution, file transfers, and establishing a command shell over a network connection. 
 
 ## Download
 To download the Python Netcat script, you can use the following curl command:
@@ -12,11 +12,11 @@ Additionally, pre-built binaries are available in the [releases section](https:/
 
 ## Usage
 ```
-usage: nc.py [-h] [-6] [-c | -e EXEC] [-l] [-v] [-m MAX_CONNS] [-s]
+usage: nc.py [-h] [-6] [-c | -e EXEC] [-l | -z] [-v] [-m MAX_CONNS] [-s]
              [--ssl-cert SSL_CERT] [--ssl-key SSL_KEY] [--ssl-verify]
-             [target] [port]
+             target port
 
-Python Netcat
+Python NetCat
 
 positional arguments:
   target                specified IP
@@ -28,6 +28,7 @@ options:
   -c, --command         initialize command shell
   -e, --exec EXEC       execute specified command
   -l, --listen          listen
+  -z, --zero            zero I/O mode, report connection status only
   -v, --verbose         be verbose
   -m, --max-conns MAX_CONNS
                         maximum simultaneous connections
