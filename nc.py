@@ -383,7 +383,7 @@ class NetCat:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Python NetCat')
     parser.add_argument('target', help='specified IP')
-    parser.add_argument('port', help='specified port')
+    parser.add_argument('port', nargs='?', default='8888', help='specified port')
     parser.add_argument('-6', '--ipv6', action='store_true', help='use IPv6')
     server_group = parser.add_mutually_exclusive_group(required=False)
     server_group.add_argument('-c', '--command', action='store_true', help='initialize command shell')
